@@ -1,5 +1,4 @@
-import { Canvas } from "@react-three/fiber";
-import { Text } from "@react-three/drei";
+import { useState } from "react";
 
 interface Repo {
   name: string;
@@ -7,193 +6,290 @@ interface Repo {
   forks: number;
 }
 
-const languageColors: Record<string, string> = {
-  Python: "#3572A5",
-  JavaScript: "#f1e05a",
-  TypeScript: "#3178c6",
-  HTML: "#e34c26",
-  CSS: "#563d7c",
-  Shell: "#89e051",
-  "C#": "#178600",
-  Default: "#39d353",
-};
+const SLICE_COLORS = [
+  "#39d353",
+  "#58a6ff",
+  "#f78166",
+  "#d2a8ff",
+  "#ffa657",
+];
 
-function RepoGroup({
-  x,
-  repo,
-  color,
-  maxValue,
-}: {
-  x: number;
-  repo: Repo;
-  color: string;
-  maxValue: number;
-}) {
-  const starHeight = Math.max(
-    (repo.stars / maxValue) * 2.8,
-    repo.stars > 0 ? 0.25 : 0.12
-  );
-  const forkHeight = Math.max(
-    (repo.forks / maxValue) * 2.8,
-    repo.forks > 0 ? 0.25 : 0.12
-  );
+const CX = 100;
+const CY = 100;
+const R = 80;
+const INNER_R = 38;
 
-  const label =
-    repo.name.length > 12 ? repo.name.slice(0, 10) + "…" : repo.name;
+function polarToCartesian(angleDeg: number, radius: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return {
+    x: CX + radius * Math.cos(rad),
+    y: CY + radius * Math.sin(rad),
+  };
+}
 
-  return (
-    <group position={[x, 0, 0]}>
-      {/* stars */}
-      <mesh position={[-0.28, starHeight / 2, 0]}>
-        <boxGeometry args={[0.38, starHeight, 0.38]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.18}
-          roughness={0.45}
-          metalness={0.2}
-        />
-      </mesh>
-
-      {/* forks */}
-      <mesh position={[0.28, forkHeight / 2, 0]}>
-        <boxGeometry args={[0.38, forkHeight, 0.38]} />
-        <meshStandardMaterial
-          color="#58a6ff"
-          emissive="#58a6ff"
-          emissiveIntensity={0.16}
-          roughness={0.45}
-          metalness={0.2}
-        />
-      </mesh>
-
-      {/* values */}
-      <Text
-        position={[-0.28, starHeight + 0.18, 0]}
-        fontSize={0.14}
-        color="#e6edf3"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {repo.stars}
-      </Text>
-
-      <Text
-        position={[0.28, forkHeight + 0.18, 0]}
-        fontSize={0.14}
-        color="#e6edf3"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {repo.forks}
-      </Text>
-
-      {/* legend dots */}
-      <Text
-        position={[-0.28, -0.22, 0]}
-        fontSize={0.11}
-        color={color}
-        anchorX="center"
-        anchorY="middle"
-      >
-        ★
-      </Text>
-      <Text
-        position={[0.28, -0.22, 0]}
-        fontSize={0.11}
-        color="#58a6ff"
-        anchorX="center"
-        anchorY="middle"
-      >
-        ⑂
-      </Text>
-
-      {/* repo label */}
-      <Text
-        position={[0, -0.48, 0]}
-        fontSize={0.14}
-        color="#8b949e"
-        anchorX="center"
-        anchorY="middle"
-        maxWidth={1.3}
-      >
-        {label}
-      </Text>
-    </group>
-  );
+function buildSlicePath(startAngle: number, endAngle: number): string {
+  // SVG can't draw a full 360° arc as a single arc command — use a circle instead
+  if (endAngle - startAngle >= 359.99) {
+    return `M ${CX} ${CY - R} A ${R} ${R} 0 1 1 ${CX - 0.01} ${CY - R} Z`;
+  }
+  const start = polarToCartesian(startAngle, R);
+  const end = polarToCartesian(endAngle, R);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return [
+    `M ${CX} ${CY}`,
+    `L ${start.x} ${start.y}`,
+    `A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y}`,
+    "Z",
+  ].join(" ");
 }
 
 export default function RepoBarChart({
   repos,
-  topLanguage,
+  topLanguage: _topLanguage,
 }: {
   repos: Repo[];
   topLanguage: string | null;
 }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+
   if (!repos.length) {
     return (
-      <div className="h-72 flex items-center justify-center rounded-2xl border border-white/6 bg-[#0f141b] text-sm font-mono text-[#8b949e]">
+      <div
+        style={{
+          height: 200,
+          background: "#0d1117",
+          border: "1px solid #21262d",
+          borderRadius: 8,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#8b949e",
+          fontSize: 13,
+          fontFamily: "monospace",
+        }}
+      >
         no repo data available
       </div>
     );
   }
 
-  const color =
-    languageColors[topLanguage ?? "Default"] ?? languageColors.Default;
+  const scores = repos.map((r) => r.stars + r.forks);
+  const total = scores.reduce((a, b) => a + b, 0);
 
-  const maxValue = Math.max(
-    ...repos.flatMap((repo) => [repo.stars, repo.forks]),
-    1
-  );
+  // equal slices when all repos have 0 traction
+  const values = total === 0 ? repos.map(() => 1) : scores;
+  const valueTotal = values.reduce((a, b) => a + b, 0);
 
-  const spacing = 1.55;
-  const startX = -((repos.length - 1) * spacing) / 2;
+  let cursor = 0;
+  const slices = repos.map((repo, i) => {
+    const fraction = values[i] / valueTotal;
+    const startAngle = cursor;
+    const endAngle = cursor + fraction * 360;
+    cursor = endAngle;
+    return {
+      repo,
+      score: scores[i],
+      fraction,
+      startAngle,
+      endAngle,
+      color: SLICE_COLORS[i % SLICE_COLORS.length],
+    };
+  });
+
+  const hoveredSlice = hovered !== null ? slices[hovered] : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/6 bg-[#0f141b]">
-      <div className="flex items-center justify-between px-4 pt-3 text-[11px] font-mono text-[#8b949e]">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: color }}
-            />
-            stars
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-[#58a6ff]" />
-            forks
-          </span>
+    <div
+      style={{
+        background: "#0d1117",
+        border: "1px solid #21262d",
+        borderRadius: 8,
+        padding: "16px 20px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 28,
+          flexWrap: "wrap",
+        }}
+      >
+        {/* Donut SVG */}
+        <div style={{ flexShrink: 0 }}>
+          <svg
+            width={200}
+            height={200}
+            viewBox="0 0 200 200"
+            style={{ display: "block" }}
+          >
+            {slices.map((s, i) => {
+              const isHovered = hovered === i;
+              const offset = isHovered ? 7 : 0;
+              const mid = (s.startAngle + s.endAngle) / 2;
+              const rad = ((mid - 90) * Math.PI) / 180;
+              const tx = offset * Math.cos(rad);
+              const ty = offset * Math.sin(rad);
+
+              return (
+                <path
+                  key={s.repo.name}
+                  d={buildSlicePath(s.startAngle, s.endAngle)}
+                  fill={s.color}
+                  opacity={hovered === null || isHovered ? 1 : 0.3}
+                  transform={`translate(${tx}, ${ty})`}
+                  style={{
+                    cursor: "pointer",
+                    transition: "opacity 0.2s",
+                  }}
+                  onMouseEnter={() => setHovered(i)}
+                  onMouseLeave={() => setHovered(null)}
+                />
+              );
+            })}
+
+            {/* Donut hole */}
+            <circle cx={CX} cy={CY} r={INNER_R} fill="#0d1117" />
+
+            {/* Center label */}
+            {hoveredSlice ? (
+              <>
+                <text
+                  x={CX}
+                  y={CY - 12}
+                  textAnchor="middle"
+                  fill={hoveredSlice.color}
+                  fontSize={10}
+                  fontFamily="monospace"
+                >
+                  {hoveredSlice.repo.name.length > 11
+                    ? hoveredSlice.repo.name.slice(0, 10) + "…"
+                    : hoveredSlice.repo.name}
+                </text>
+                <text
+                  x={CX}
+                  y={CY + 7}
+                  textAnchor="middle"
+                  fill="#f0f6fc"
+                  fontSize={18}
+                  fontWeight="bold"
+                  fontFamily="monospace"
+                >
+                  {Math.round(hoveredSlice.fraction * 100)}%
+                </text>
+                <text
+                  x={CX}
+                  y={CY + 22}
+                  textAnchor="middle"
+                  fill="#8b949e"
+                  fontSize={9}
+                  fontFamily="monospace"
+                >
+                  ★{hoveredSlice.repo.stars} ⑂{hoveredSlice.repo.forks}
+                </text>
+              </>
+            ) : (
+              <>
+                <text
+                  x={CX}
+                  y={CY - 5}
+                  textAnchor="middle"
+                  fill="#8b949e"
+                  fontSize={10}
+                  fontFamily="monospace"
+                >
+                  {total === 0 ? "equal" : "traction"}
+                </text>
+                <text
+                  x={CX}
+                  y={CY + 13}
+                  textAnchor="middle"
+                  fill="#f0f6fc"
+                  fontSize={14}
+                  fontWeight="bold"
+                  fontFamily="monospace"
+                >
+                  {total === 0 ? "split" : `${total} pts`}
+                </text>
+              </>
+            )}
+          </svg>
         </div>
-        <span>scaled by repo max</span>
-      </div>
 
-      <div className="h-72">
-        <Canvas camera={{ position: [0, 2.6, 6.4], fov: 42 }}>
-          <ambientLight intensity={0.75} />
-          <directionalLight position={[5, 8, 5]} intensity={1.15} />
-          <pointLight position={[0, 4, 2]} intensity={0.35} color={color} />
-
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
-            <planeGeometry args={[12, 6]} />
-            <meshStandardMaterial color="#11161d" />
-          </mesh>
-
-          <gridHelper
-            args={[12, 12, "#21262d", "#161b22"]}
-            position={[0, 0, 0]}
-          />
-
-          {repos.map((repo, i) => (
-            <RepoGroup
-              key={repo.name}
-              x={startX + i * spacing}
-              repo={repo}
-              color={color}
-              maxValue={maxValue}
-            />
+        {/* Legend */}
+        <div style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 12 }}>
+          {slices.map((s, i) => (
+            <div
+              key={s.repo.name}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                cursor: "pointer",
+                opacity: hovered === null || hovered === i ? 1 : 0.35,
+                transition: "opacity 0.2s",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <div
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    backgroundColor: s.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: 13,
+                    color: "#e6edf3",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: 180,
+                  }}
+                >
+                  {s.repo.name}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  fontFamily: "monospace",
+                  fontSize: 12,
+                  color: "#8b949e",
+                  flexShrink: 0,
+                  marginLeft: 12,
+                }}
+              >
+                <span>★ {s.repo.stars}</span>
+                <span>⑂ {s.repo.forks}</span>
+                <span style={{ color: s.color, fontWeight: "bold" }}>
+                  {Math.round(s.fraction * 100)}%
+                </span>
+              </div>
+            </div>
           ))}
-        </Canvas>
+
+          {total === 0 && (
+            <p
+              style={{
+                fontFamily: "monospace",
+                fontSize: 11,
+                color: "#484f58",
+                marginTop: 4,
+              }}
+            >
+              no stars or forks yet — slices split equally
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

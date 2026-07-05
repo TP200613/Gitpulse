@@ -1,28 +1,29 @@
 {
-  "name": "gitpulse",
+  "name": "gitpulse-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@tailwindcss/vite": "^4.3.1",
     "lucide-react": "^1.21.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "tailwindcss": "^4.3.1",
     "three": "^0.185.0"
   },
   "devDependencies": {
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
     "@types/three": "^0.184.1",
-    "@vitejs/plugin-react": "^5.0.2",
-    "vite": "^7.1.3"
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0"
   }
 }
