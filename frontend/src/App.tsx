@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Star, GitFork, Search, Flame, Zap, Terminal, Shield,
   Calendar, Code2, GitCommit, BookMarked, Activity, ExternalLink, 
-  RefreshCw, Cpu, Globe, Columns3, Award, Command
-} from "lucide-react";
+  RefreshCw, Cpu, Globe, Columns3, Award, } from "lucide-react";
 import RepoBarChart from "./RepoBarChart";
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -939,7 +938,7 @@ export default function App() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 0,
+            gap:0,
           }}>
       <img
           src="logo.png"
