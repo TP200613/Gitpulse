@@ -468,17 +468,17 @@ function InteractiveDiagnosticTerminal({ boost, roast }: { boost: string; roast:
   const fullText = isBoost ? boost : roast;
 
   useEffect(() => {
+    let i = 0;
     setDisplayedText("");
-    let index = 0;
     const interval = setInterval(() => {
-      setDisplayedText((prev) => prev + fullText.charAt(index));
-      index++;
-      if (index >= fullText.length) clearInterval(interval);
+      i++;
+      setDisplayedText(fullText.slice(0, i));
+      if (i >= fullText.length) clearInterval(interval);
     }, 8);
 
     return () => clearInterval(interval);
   }, [terminalTab, boost, roast, fullText]);
-
+  
   return (
     <div className="ultra-glass" style={{ borderRadius: 24, overflow: "hidden" }}>
       <div style={{
@@ -655,11 +655,64 @@ function CompareSnapshotCard({ result, rank }: { result: CompareResult; rank: nu
   );
 }
 
+// ─── Multi-Metric Comparison Chart ──────────────────────────────────────
+function CompareMetricsChart({ results }: { results: CompareResult[] }) {
+  const valid = results.filter(r => r.data !== null) as Array<CompareResult & { data: Snapshot }>;
+  if (valid.length === 0) return null;
+
+  const metrics: Array<{ key: keyof Snapshot; label: string; hex: string; suffix: string }> = [
+    { key: "consistency_score", label: "CONSISTENCY SCORE", hex: "#ffbd2e", suffix: "" },
+    { key: "current_streak", label: "CURRENT STREAK", hex: "#f78166", suffix: " days" },
+    { key: "total_commits", label: "TOTAL COMMITS", hex: "#39d353", suffix: "" },
+  ];
+
+  return (
+    <div className="ultra-glass" style={{ borderRadius: 22, padding: 28, marginBottom: 24, display: "flex", flexDirection: "column", gap: 24 }}>
+      {metrics.map((metric) => {
+        const maxVal = Math.max(...valid.map(r => Number(r.data[metric.key]) || 0), 1);
+        return (
+          <div key={metric.key}>
+            <div style={{ fontSize: 11, fontFamily: "monospace", fontWeight: 700, color: "#8b949e", letterSpacing: "0.5px", marginBottom: 12 }}>
+              {metric.label}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {valid.map((r) => {
+                const value = Number(r.data[metric.key]) || 0;
+                const widthPct = Math.max((value / maxVal) * 100, 3);
+                return (
+                  <div key={r.username} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 90, fontSize: 12, fontFamily: "monospace", color: "#e6edf3", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      @{r.username}
+                    </div>
+                    <div style={{ flex: 1, background: "rgba(255,255,255,0.03)", borderRadius: 6, height: 20, position: "relative", overflow: "hidden" }}>
+                      <div style={{
+                        width: `${widthPct}%`, height: "100%", background: metric.hex, borderRadius: 6,
+                        transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)"
+                      }} />
+                    </div>
+                    <div style={{ width: 60, textAlign: "right", fontSize: 12, fontFamily: "monospace", color: metric.hex, fontWeight: 700, flexShrink: 0 }}>
+                      {value}{metric.suffix}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Comparison Panel ──────────────────────────────────────
+const BULK_PASTE_CAP = 10;
+
 function ComparePanel() {
   const [usernames, setUsernames] = useState(["", ""]);
+  const [bulkText, setBulkText] = useState("");
   const [results, setResults] = useState<CompareResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [cappedNotice, setCappedNotice] = useState("");
 
   function addField() {
     setUsernames([...usernames, ""]);
@@ -670,15 +723,14 @@ function ComparePanel() {
     setUsernames(usernames.filter((_, i) => i !== index));
   }
 
-  async function runComparison() {
-    const activeUsernames = usernames.map(u => u.trim()).filter(Boolean);
-    if (activeUsernames.length === 0) return;
+  async function runComparison(list: string[]) {
+    if (list.length === 0) return;
 
     setLoading(true);
     setResults([]);
 
     const fetched = await Promise.all(
-      activeUsernames.map(async (username): Promise<CompareResult> => {
+      list.map(async (username): Promise<CompareResult> => {
         try {
           const response = await fetch(`${API_BASE}/api/snapshot/${username}`);
           if (!response.ok) throw new Error("User not found");
@@ -698,6 +750,31 @@ function ComparePanel() {
 
     setResults([...succeeded, ...failed]);
     setLoading(false);
+  }
+
+  function handleFieldCompare() {
+    const activeUsernames = usernames.map(u => u.trim()).filter(Boolean);
+    setCappedNotice("");
+    runComparison(activeUsernames);
+  }
+
+  function handleBulkCompare() {
+    const parsed = Array.from(
+      new Set(
+        bulkText
+          .split(/[,\n]+/)
+          .map(u => u.trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (parsed.length > BULK_PASTE_CAP) {
+      setCappedNotice(`You entered ${parsed.length} usernames — only comparing the first ${BULK_PASTE_CAP} to keep things fast.`);
+    } else {
+      setCappedNotice("");
+    }
+
+    runComparison(parsed.slice(0, BULK_PASTE_CAP));
   }
 
   return (
@@ -738,9 +815,9 @@ function ComparePanel() {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 20 }}>
           <button
-            onClick={runComparison}
+            onClick={handleFieldCompare}
             disabled={loading || !usernames[0].trim()}
             className="btn-neon-action"
             style={{
@@ -764,15 +841,55 @@ function ComparePanel() {
             + Add another
           </button>
         </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "8px 0 16px" }}>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+          <span style={{ fontSize: 11, fontFamily: "monospace", color: "#6e7681" }}>OR PASTE A LIST</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+        </div>
+
+        <textarea
+          value={bulkText}
+          onChange={(e) => setBulkText(e.target.value)}
+          placeholder="Paste usernames separated by commas or new lines, e.g. torvalds, gaearon, sindresorhus (up to 10)"
+          className="input-matrix-field"
+          rows={3}
+          style={{
+            width: "100%", padding: "12px 16px", borderRadius: 12, fontSize: 13, color: "#fff",
+            fontFamily: "monospace", border: "none", outline: "none", resize: "vertical", marginBottom: 12
+          }}
+        />
+        <button
+          onClick={handleBulkCompare}
+          disabled={loading || !bulkText.trim()}
+          className="btn-neon-action"
+          style={{
+            border: "none", outline: "none", color: "#fff", padding: "12px 28px",
+            borderRadius: 14, fontSize: 13, fontWeight: 700, fontFamily: "monospace",
+            cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 8
+          }}
+        >
+          {loading ? <RefreshCw size={14} style={{ animation: "spinSlow 1s linear infinite" }} /> : <Columns3 size={14} />}
+          {loading ? "Loading..." : "Compare pasted list"}
+        </button>
+
+        {cappedNotice && (
+          <div style={{ marginTop: 12, fontSize: 12, fontFamily: "monospace", color: "#d29922" }}>
+            {cappedNotice}
+          </div>
+        )}
       </div>
 
       {results.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-          {results.map((result) => {
-            const rank = result.data ? results.filter(r => r.data).indexOf(result) + 1 : null;
-            return <CompareSnapshotCard key={result.username} result={result} rank={rank} />;
-          })}
-        </div>
+        <>
+          <CompareMetricsChart results={results} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+            {results.map((result) => {
+              const rank = result.data ? results.filter(r => r.data).indexOf(result) + 1 : null;
+              return <CompareSnapshotCard key={result.username} result={result} rank={rank} />;
+            })}
+          </div>
+        </>
       )}
     </div>
   );
