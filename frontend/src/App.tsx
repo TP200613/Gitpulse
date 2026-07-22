@@ -478,7 +478,7 @@ function InteractiveDiagnosticTerminal({ boost, roast }: { boost: string; roast:
 
     return () => clearInterval(interval);
   }, [terminalTab, boost, roast, fullText]);
-  
+
   return (
     <div className="ultra-glass" style={{ borderRadius: 24, overflow: "hidden" }}>
       <div style={{
@@ -935,17 +935,34 @@ export default function App() {
         maxWidth: 1100, margin: "0 auto", padding: "40px 0 80px", display: "flex",
         justifyContent: "space-between", alignItems: "center", position: "relative", zIndex: 1
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            background: "rgba(57, 211, 83, 0.1)", border: "1px solid rgba(57, 211, 83, 0.2)",
-            padding: 8, borderRadius: 12, color: "#39d353", display: "flex", alignItems: "center"
+      <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0,
           }}>
-            <Command size={18} />
-          </div>
-          <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.5px", color: "#fff", fontFamily: "monospace" }}>
-            GitPulse
-          </span>
-        </div>
+      <img
+          src="logo.png"
+          alt="GitPulse"
+          style={{
+            width: 70,
+            height: 70,
+            objectFit: "contain",
+            display: "block",
+          }}
+        />
+  <span
+    style={{
+      fontSize: 20,
+      fontWeight: 900,
+      letterSpacing: "-0.5px",
+      color: "#fff",
+      fontFamily: "Inter, sans-serif",
+    }}
+  >
+    Git<span style={{ color: "#39d353" }}>Pulse</span>
+  </span>
+</div>
         
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ display: "flex", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", padding: 3, borderRadius: 12 }}>
