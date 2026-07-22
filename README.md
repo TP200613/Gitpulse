@@ -1,94 +1,250 @@
 # GitPulse
 
-Activity snapshot for any public GitHub profile — streaks, consistency scoring, top languages, and multi-user comparison, all backed by real GitHub API data and SQL analytics.
+![GitPulse Homepage](assets/GitpluseHomepage.png)
 
-**Live demo:** _[add your deployed URL here once live]_will be soon
-**Repo:** [github.com/TP200613/Gitpulse](https://github.com/TP200613/Gitpulse)
+GitPulse is a full-stack web application that analyzes any public GitHub profile and generates an activity snapshot with commit streaks, consistency scoring, language insights, repository analytics, and multi-user comparisons—all powered by the GitHub API, SQL analytics, and an interactive React dashboard.
+
+🌐 **Live Demo:** https://gitpulse-v1.vercel.app  
+📂 **Repository:** https://github.com/TP200613/Gitpulse
 
 ---
 
-## What it does
+## 🚀 Features
 
-Enter any public GitHub username and GitPulse pulls their full repo and commit history (with pagination, so it works for accounts with hundreds of repos or commits), stores it in a SQLite database, and runs it through a set of SQL queries to surface:
+- 🔍 Analyze any public GitHub profile using the GitHub API
+- 🔥 Current and longest commit streak calculation
+- 📊 Consistency Score (0–100) based on activity patterns
+- 💻 Top programming language detection
+- 📅 Most active day of the week
+- ⭐ Top repositories ranked by stars and forks
+- 😈 Fun Boost/Roast mode generated from profile statistics
+- 👥 Compare multiple GitHub users side by side
+- 📈 Interactive comparison charts
+- 🌐 Supports GitHub API pagination for large repositories and commit histories
+- ⚡ Fully deployed using Vercel and Render
+- 🎨 Modern responsive UI with interactive animations
 
-- **Current & longest commit streaks**
-- **Consistency Score** (0–100) — a weighted formula based on recency, streak length, and commit regularity
-- **Top language**, based on repo count
-- **Most active day of the week**
-- **Top repos** by stars + forks
-- A **Boost/Roast** mode — a fun, personality-driven one-liner generated from the user's own stats
+---
 
-It also supports comparing **multiple GitHub profiles side by side** (individually or via bulk paste), automatically ranked by consistency score, with a multi-metric bar chart (score, streak, commits) for at-a-glance comparison.
+## 📊 What GitPulse Analyzes
 
-## Features
+For every public GitHub profile, GitPulse generates:
 
-- 🔍 Single-profile activity snapshot with real-time GitHub API data
-- 🔥 Current & longest streak calculation
-- 📊 Consistency Score with a transparent, explainable formula
-- 😈 Boost/Roast mode for a fun take on your own stats
-- 🏆 Multi-user comparison (manual entry or bulk paste, ranked by consistency score)
-- 📈 Multi-metric comparison chart (score, streak, total commits)
-- 🌐 Handles GitHub API pagination for accounts with large repo/commit histories
+- Current Commit Streak
+- Longest Commit Streak
+- Total Commits
+- Repository Count
+- Consistency Score
+- Most Used Programming Language
+- Most Active Day
+- Top Repositories
+- Personalized Boost/Roast Message
 
-## Tech stack
+The application fetches live data from the GitHub API, stores it in SQLite, and performs SQL-based analytics to generate these insights.
 
-**Backend:** Python, Flask, Flask-CORS, SQLite, `requests`, `python-dotenv`
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, Three.js (`@react-three/fiber`, `@react-three/drei`), `lucide-react`
+---
 
-## The SQL layer
+## 🛠 Tech Stack
 
-All analytics run through five core SQL queries against the `repos` and `commits` tables:
-1. **Top language** — most-used language across a user's repos
-2. **Most active day** — day of week with the highest commit count
-3. **Distinct commit dates** — used to calculate streaks in Python
-4. **Top repos** — ranked by stars + forks, excluding forks
-5. **Active days in last 90 days** — used in the Consistency Score formula
+### Frontend
 
-## Project structure
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Three.js
+- @react-three/fiber
+- @react-three/drei
+- Lucide React
 
-```
+### Backend
+
+- Python
+- Flask
+- Flask-CORS
+- SQLite
+- Requests
+- Python-dotenv
+
+### Deployment
+
+- Vercel (Frontend)
+- Render (Backend)
+
+---
+
+## 🗄 Database & SQL Analytics
+
+GitPulse stores GitHub data locally in SQLite and performs analytics using SQL queries.
+
+Core SQL operations include:
+
+1. Finding the most-used programming language
+2. Calculating the most active weekday
+3. Retrieving distinct commit dates for streak calculations
+4. Ranking repositories using stars and forks
+5. Calculating active days within the last 90 days for consistency scoring
+
+---
+
+## 📁 Project Structure
+
+```text
 Gitpulse/
+├── assets/
+│   └── homepage.png
+│
 ├── backend/
-│   ├── app.py              # Flask app + /api/snapshot/<username> route
-│   ├── database.py         # SQLite schema + all SQL queries
-│   ├── data_processing.py  # streak calc, consistency score, boost/roast logic
-│   ├── github_api.py       # GitHub API fetching with pagination
-│   └── requirements.txt
+│   ├── app.py
+│   ├── github_api.py
+│   ├── database.py
+│   ├── data_processing.py
+│   ├── requirements.txt
+│   └── .env
+│
 ├── frontend/
-│   ├── src/                # React + TypeScript app
+│   ├── public/
+│   ├── src/
 │   ├── package.json
-│   └── ...
-└── .gitignore
+│   ├── vite.config.ts
+│   └── .env
+│
+├── .gitignore
+└── README.md
 ```
 
-## Running it locally
+---
 
-**Backend**
+## ⚙️ Running Locally
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/TP200613/Gitpulse.git
+cd Gitpulse
+```
+
+---
+
+### Backend Setup
+
 ```bash
 cd backend
+
 python -m venv venv
-source venv/Scripts/activate      # Windows (Git Bash)
-pip install -r requirements.txt --break-system-packages
-# create a .env file in backend/ with:
-# GITHUB_TOKEN=your_github_personal_access_token
+
+source venv/Scripts/activate
+
+pip install -r requirements.txt
+```
+
+Create a `.env` file inside the `backend` folder.
+
+```env
+GITHUB_TOKEN=your_personal_access_token
+```
+
+Run the backend:
+
+```bash
 python app.py
 ```
-Runs at `http://127.0.0.1:5000`.
 
-**Frontend**
-```bash
-cd frontend
-npm install
-npm run dev
+Backend runs on:
+
 ```
-Runs at `http://localhost:5173`. Set `VITE_API_URL` in a `.env` file inside `frontend/` if your backend isn't running locally.
-
-## API
-
-**`GET /api/snapshot/<username>`**
-
-Returns a JSON snapshot for the given public GitHub username: repo/commit counts, top language, most active day, streaks, consistency score, boost/roast messages, and top repos.
+http://127.0.0.1:5000
+```
 
 ---
 
-Built solo as a 5-week project, from database design through deployment.
+### Frontend Setup
+
+```bash
+cd frontend
+
+npm install
+
+npm run dev
+```
+
+If you're using the backend locally, create a `.env` file inside the `frontend` folder.
+
+```env
+VITE_API_URL=http://127.0.0.1:5000
+```
+
+If you're using the deployed backend instead:
+
+```env
+VITE_API_URL=https://gitpulse-fhgg.onrender.com
+```
+
+Frontend runs on:
+
+```
+http://localhost:5173
+```
+
+---
+
+## 🌐 API Endpoint
+
+### GET `/api/snapshot/<username>`
+
+Example:
+
+```text
+GET /api/snapshot/octocat
+```
+
+Returns:
+
+- Repository statistics
+- Commit statistics
+- Current commit streak
+- Longest commit streak
+- Consistency Score
+- Most active day
+- Top programming language
+- Top repositories
+- Personalized Boost/Roast message
+
+---
+
+## 🚀 Future Improvements
+
+- GitHub OAuth Login
+- Activity Heatmaps
+- AI-powered Profile Review
+- Search History
+- Performance Caching
+- Redis Support
+- PostgreSQL Support
+- Repository Trend Analysis
+- Export Reports as PDF
+- Custom Domain
+
+---
+
+## 👨‍💻 Author
+
+**Tharun Raj T P**
+
+GitPulse was designed and developed as a solo full-stack project over five weeks, covering:
+
+- System Design
+- GitHub API Integration
+- Backend Development
+- Database Design
+- SQL Analytics
+- Frontend Development
+- Deployment (Render + Vercel)
+
+---
+
+## ⭐ Support
+
+If you found GitPulse useful, consider giving the repository a ⭐ on GitHub.
+
+It helps others discover the project and motivates future improvements.
