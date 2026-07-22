@@ -1,6 +1,6 @@
 # GitPulse
 
-![GitPulse Homepage](assets/GitpluseHomepage.png)
+![GitPulse Homepage](Assets/GitpluseHomepage.png)
 
 GitPulse is a full-stack web application that analyzes any public GitHub profile and generates an activity snapshot with commit streaks, consistency scoring, language insights, repository analytics, and multi-user comparisons—all powered by the GitHub API, SQL analytics, and an interactive React dashboard.
 
